@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf8" />
+	<title>Proton</title>
+	<script src="/dist/proton.js"></script>
+</head>
+<body>
+	<h1>Proton Sample</h1>
+
+	<script>
+		var proton = Proton.new();
+
+        var foo = proton.module("foo");
+
+		proton.onConnecting = function() {
+			console.log("connecting");
+		};
+
+		proton.onConnected = function() {
+			console.log("connected");
+
+            foo.call("bar", { foo: 3 }, function(data) {
+				console.log("success:", data);
+			}, function(err) {
+				console.log("error:", err);
+			});
+		};
+
+        proton.onDisconnected = function() {
+            console.log("disconnected");
+        };
+
+		proton.onError = function(msg) {
+			console.log("error:", msg);
+		};
+	</script>
+</body>
+</html>

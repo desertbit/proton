@@ -26,14 +26,14 @@ var Modules = function() {
      */
 
     var rkeyLen = 14;
-    
+
 
 
     /*
      * Variables
      */
 
-    var callbacksMap   = {};
+    var callbacksMap = {};
 
 
 
@@ -41,12 +41,26 @@ var Modules = function() {
      * Methods
      */
 
+    function triggerCBError(cb, msg) {
+        // Trigger the error callback if defined.
+        // Otherwise trigger the global error event.
+        if (cb.error) {
+            try {
+                cb.error(msg);
+            } catch (e) {
+                console.log("Proton: error callback: catched exception:", e);
+            }
+        } else {
+            triggerError(msg);
+        }
+    }
+
     // call a module method on the server-side.
     function callMethod(module, method) {
         var params = false,
             callback = false,
             errorCallback = false;
-    
+
         // Define a method to print error messages.
         var logError = function() {
             console.log("Proton: invalid method call: module='" + module + "' method='" + method + "'");
@@ -128,14 +142,8 @@ var Modules = function() {
                 // Remove the callback object again from the map.
                 delete callbacksMap[rkey];
 
-                // Trigger the error callback if defined.
-                if (cb.error) {
-                    try {
-                        cb.error("method call timeout: no server response received within the timeout");
-                    } catch (e) {
-                        console.log("Proton: call method error: catched exception:", e);                    
-                    }
-                }
+                // Trigger the error callback.
+                triggerCBError(cb, "method call timeout: no server response received within the timeout");
             }, options.methodCallTimeout);
 
             callbacksMap[rkey] = cb;
@@ -151,7 +159,7 @@ var Modules = function() {
         try {
             header = msgpack.decode(header);
         } catch (e) {
-            console.log("Proton: handle return request: catched exception: msgpack decode:", e);                    
+            console.log("Proton: handle return request: catched exception: msgpack decode:", e);
         }
 
         // The return key must be valid.
@@ -163,7 +171,7 @@ var Modules = function() {
         // Obtain the callback object.
         var cb = callbacksMap[header.RKey];
         if (!cb) {
-            triggerError("failed to handle return request: invalid return key");            
+            triggerError("failed to handle return request: invalid return key");
             return;
         }
 
@@ -178,15 +186,7 @@ var Modules = function() {
 
         // Call the required callback.
         if (header.Err && String(header.Err).length > 0) {
-            if (!cb.error) {
-                return;
-            }
-
-            try {
-                cb.error(String(header.Err));
-            } catch (e) {
-                console.log("Proton: handle return request: catched exception:", e);                    
-            }
+            triggerCBError(cb, String(header.Err));
         } else {
             if (!cb.callback) {
                 return;
@@ -196,14 +196,14 @@ var Modules = function() {
                 try {
                     payload = msgpack.decode(payload);
                 } catch (e) {
-                    console.log("Proton: handle return request: catched exception: msgpack decode:", e);                    
+                    console.log("Proton: handle return request: catched exception: msgpack decode:", e);
                 }
             }
 
             try {
                 cb.callback(payload);
             } catch (e) {
-                console.log("Proton: handle return request: catched exception:", e);                    
+                console.log("Proton: handle return request: catched exception:", e);
             }
         }
     }

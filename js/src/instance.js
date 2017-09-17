@@ -74,10 +74,11 @@ Proton.new = function(host, options) {
      */
 
     var bs, // Backend socket.
-        isConnected         = false,
-        reconnectTimeout    = false,
-        keepaliveTimeout    = false,
-        pingTimeout         = false;
+        isConnected                 = false,
+        reconnectTimeout            = false,
+        keepaliveTimeout            = false,
+        pingTimeout                 = false,
+        writeCache                  = [];
 
 
 
@@ -184,6 +185,9 @@ Proton.new = function(host, options) {
             bs.onError = undefined;
             bs.onRead = undefined;
 
+            // Try to write the close frame if possible.
+            write(RequestType.Close);
+
             bs.close();
             bs = undefined;
 
@@ -221,6 +225,7 @@ Proton.new = function(host, options) {
             resetKeepaliveTimeout();
             resetPingTimeout();
             triggerConnected();
+            flushWriteCache();
         };
 
         // Function which is triggered as soon as the connection closes.
@@ -343,7 +348,7 @@ Proton.new = function(host, options) {
                     }
 
                     hasHead = true;
-                }                
+                }
 
                 // Read the header data if required.
                 if (!hasHeaderData) {
@@ -351,11 +356,11 @@ Proton.new = function(host, options) {
                     if (readBuf.length < headerLen) {
                         return;
                     }
-                    
+
                     if (headerLen > 0) {
                         headerData = readBuf.read(headerLen).raw;
                     }
-                    
+
                     hasHeaderData = true;
                 }
 
@@ -367,17 +372,17 @@ Proton.new = function(host, options) {
                 if (payloadLen > 0) {
                     payloadData = readBuf.read(payloadLen).raw;
                 }
-                
+
                 // Handle the request.
                 handleRequest(reqType, headerData, payloadData);
-                
+
                 // Reset everything.
                 index = 0;
                 hasHead = false;
                 hasHeaderData = false;
                 headerData = undefined;
                 payloadData = undefined;
-    
+
                 // Reset the buffer, but keep unread bytes.
                 readBuf.clip(0, readBuf.index);
             } catch (e) {
@@ -394,7 +399,7 @@ Proton.new = function(host, options) {
         // Check the request type.
         switch (reqType) {
             case RequestType.Close:
-                // The socket peer has closed the connection. Reconnect... 
+                // The socket peer has closed the connection. Reconnect...
                 reconnectSocket();
                 break;
 
@@ -402,28 +407,49 @@ Proton.new = function(host, options) {
                 // The socket peer has requested a pong response.
                 write(RequestType.Pong);
                 break;
-                
+
             case RequestType.Pong:
                 // Don't do anything. The socket timeouts have already been reset.
                 break;
-                
+
             case RequestType.MethodReturn:
                 Modules.handleMethodReturn(headerData, payloadData);
                 break;
-                
+
             default:
                 triggerError("failed to handle request: invalid request type: " + String(reqType));
         }
     }
 
-    function write(reqType, header, data) {
-        try {
-            // Fail if not connected.
-            if (!isConnected) {
-                triggerError("failed send request: not connected to server");
-                return;
-            }
+    function clearWriteCache() {
+        writeCache = [];
+    }
 
+    function flushWriteCache() {
+        for (var i = 0; i < writeCache.length; i++) {
+            var c = writeCache[i];
+            write(c.reqType, c.header, c.data, true);
+        }
+
+        clearWriteCache();
+    }
+
+    function write(reqType, header, data, disableCache) {
+        // If not connected add it to the temporary write cache.
+        if (!isConnected) {
+            if (!disableCache) {
+                writeCache.push({
+                    reqType:    reqType,
+                    header:     header,
+                    data:       data
+                });
+            } else {
+                triggerError("failed send request: not connected to server");
+            }
+            return;
+        }
+
+        try {
             var b = BinarySocket.newByteBuffer(1, true),
                 payload,
                 payloadLen = 0,

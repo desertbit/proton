@@ -21,9 +21,9 @@ package proton
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/desertbit/glue/log"
 	"github.com/desertbit/proton/headers"
+
+	"github.com/Sirupsen/logrus"
 )
 
 //###############//
@@ -92,7 +92,7 @@ func (m *Module) callMethod(s *Socket, h *headers.MethodCall, payload []byte) (e
 	}
 
 	// Log.
-	log.L.WithFields(logrus.Fields{
+	Log.WithFields(logrus.Fields{
 		"remoteAddress": s.RemoteAddr(),
 		"module":        m.name,
 		"method":        h.Method,
@@ -144,7 +144,7 @@ func (m *Module) sendMethodReturn(
 		}
 
 		// Log the error.
-		log.L.WithFields(logrus.Fields{
+		Log.WithFields(logrus.Fields{
 			"remoteAddress": s.RemoteAddr(),
 			"module":        m.name,
 			"method":        methodName,

@@ -185,8 +185,9 @@ Proton.new = function(host, options) {
             bs.onError = undefined;
             bs.onRead = undefined;
 
+            // TODO! isConnected
             // Try to write the close frame if possible.
-            write(RequestType.Close);
+            //write(RequestType.Close);
 
             bs.close();
             bs = undefined;

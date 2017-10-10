@@ -17,8 +17,12 @@
 			console.log("connecting");
 		};
 
-		proton.onConnected = function() {
-			console.log("connected");
+        proton.onConnectingFail = function() {
+            console.log("connecting fail");
+        };
+
+		proton.onConnect = function() {
+			console.log("connect");
 
             foo.call("bar", { foo: 3 }, function(data) {
 				console.log("success:", data);
@@ -27,8 +31,8 @@
 			});
 		};
 
-        proton.onDisconnected = function() {
-            console.log("disconnected");
+        proton.onDisconnect = function() {
+            console.log("disconnect");
         };
 
 		proton.onError = function(msg) {

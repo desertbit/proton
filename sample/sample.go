@@ -19,8 +19,8 @@
 package main
 
 import (
-	"log"
 	"fmt"
+	"log"
 
 	"github.com/desertbit/proton"
 )
@@ -56,6 +56,11 @@ func main() {
 
 func onNewSocket(s *proton.Socket) {
 	log.Printf("new socket remoteAddr=%v id=%v", s.RemoteAddr(), s.ID())
+
+	go func() {
+		<-s.ClosedChan()
+		log.Printf("socket closed remoteAddr=%v id=%v", s.RemoteAddr(), s.ID())
+	}()
 }
 
 func bar(c *proton.C) error {

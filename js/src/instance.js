@@ -106,11 +106,14 @@ Proton.new = function(host, options) {
         // Function which is triggered during a connecting attempt.
         onConnecting: function() {},
 
+        // Function which is triggered during a connecting attempt failure.
+        onConnectingFail: function() {},
+
         // Function which is triggered as soon as the connection was established.
-        onConnected: function() {},
+        onConnect: function() {},
 
         // Function which is triggered if the connection was lost.
-        onDisconnected: function() {},
+        onDisconnect: function() {},
 
         // Function which is triggered on any error.
         // An optional error message is passed.
@@ -139,22 +142,32 @@ Proton.new = function(host, options) {
         }
     }
 
-    function triggerConnected() {
-        if (instance.onConnected) {
+    function triggerConnectingFail() {
+        if (instance.onConnectingFail) {
             try {
-                instance.onConnected();
+                instance.onConnectingFail();
             } catch (e) {
-                console.log("Proton: onConnected: catched exception:", e);
+                console.log("Proton: onConnectingFail: catched exception:", e);
             }
         }
     }
 
-    function triggerDisconnected() {
-        if (instance.onDisconnected) {
+    function triggerConnect() {
+        if (instance.onConnect) {
             try {
-                instance.onDisconnected();
+                instance.onConnect();
             } catch (e) {
-                console.log("Proton: onDisconnected: catched exception:", e);
+                console.log("Proton: onConnect: catched exception:", e);
+            }
+        }
+    }
+
+    function triggerDisconnect() {
+        if (instance.onDisconnect) {
+            try {
+                instance.onDisconnect();
+            } catch (e) {
+                console.log("Proton: onDisconnect: catched exception:", e);
             }
         }
     }
@@ -175,30 +188,43 @@ Proton.new = function(host, options) {
     }
 
     function closeSocket() {
-        isConnected = false;
-
         // Close the socket if connected.
         if (bs) {
             // Just to go sure no event is triggered after the close.
-            bs.onOpen = undefined;
-            bs.onClose = undefined;
-            bs.onError = undefined;
-            bs.onRead = undefined;
+            var voidF = function() {};
+            bs.onOpen = voidF;
+            bs.onClose = voidF;
+            bs.onError = voidF;
+            bs.onRead = voidF;
 
-            // TODO! isConnected
             // Try to write the close frame if possible.
-            //write(RequestType.Close);
+            // Don't cache this request.
+            write(RequestType.Close, undefined, undefined, true);
 
-            bs.close();
+            // Close the backend socket during the next tick.
+            var oldBS = bs;
+            setTimeout(function() {
+                oldBS.close();
+            }, 0);
+
+            // Reset the backend socket.
             bs = undefined;
-
-            triggerDisconnected();
         }
+
+        var wasConnected = isConnected;
+        isConnected = false;
 
         // Stop timeouts.
         stopKeepaliveTimeout();
         stopPingTimeout();
         stopReconnectTimeout();
+
+        // Trigger the event.
+        if (wasConnected) {
+            triggerDisconnect();
+        } else {
+            triggerConnectingFail();
+        }
     }
 
     function reconnectSocket() {
@@ -223,9 +249,10 @@ Proton.new = function(host, options) {
         // Function which is triggered as soon as the connection is established.
         bs.onOpen = function() {
             isConnected = true;
+            stopReconnectTimeout();
             resetKeepaliveTimeout();
             resetPingTimeout();
-            triggerConnected();
+            triggerConnect();
             flushWriteCache();
         };
 
@@ -445,7 +472,7 @@ Proton.new = function(host, options) {
                     data:       data
                 });
             } else {
-                triggerError("failed send request: not connected to server");
+                triggerError("failed to send request: not connected to server");
             }
             return;
         }

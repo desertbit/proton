@@ -1,6 +1,6 @@
 {
   "name": "proton",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "A powerful platform for your real-time web applications",
   "main": "gulpfile.js",
   "dependencies": {

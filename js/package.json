@@ -4,7 +4,7 @@
   "description": "A powerful platform for your real-time web applications",
   "main": "gulpfile.js",
   "dependencies": {
-    "gulp": "^3.9.1",
+    "gulp": "^4.0.2",
     "gulp-file-include": "^1.2.0",
     "gulp-rename": "^1.2.2",
     "gulp-sourcemaps": "^2.6.1",
